@@ -10,7 +10,7 @@
             --primary-color: #4a90e2;
             --error-color: #e74c3c;
             --success-color: #2ecc71;
-            --line-color: #ff9999;
+            --line-color: #ffcccc; /* 四線譜顏色 */
             --text-color: #2c3e50;
             --bg-canvas: #fffef0;
         }
@@ -69,7 +69,6 @@
             border: 1px solid #ddd;
             background: #fff;
             border-radius: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .btn-mini.active {
@@ -78,17 +77,27 @@
             border-color: var(--primary-color);
         }
 
+        /* 核心修改：將四線譜設為畫布背景，不會被擦掉 */
         .canvas-container {
             position: relative;
-            background-image: linear-gradient(var(--line-color) 1px, transparent 1px);
-            background-size: 100% 40px;
             background-color: var(--bg-canvas);
             border: 1px solid #ccc;
             border-radius: 4px;
             overflow: hidden;
         }
 
-        canvas { cursor: crosshair; }
+        canvas { 
+            cursor: crosshair;
+            /* 使用 CSS 繪製永遠存在的四線譜 */
+            background-image: 
+                linear-gradient(var(--line-color) 1px, transparent 1px),
+                linear-gradient(var(--line-color) 1px, transparent 1px),
+                linear-gradient(var(--line-color) 1px, transparent 1px),
+                linear-gradient(var(--line-color) 1px, transparent 1px);
+            background-size: 100% 160px; /* 總高度 */
+            background-position: 0 40px, 0 80px, 0 120px, 0 160px; /* 四條線的位置 */
+            background-repeat: repeat-x;
+        }
 
         .result-mark { font-size: 24px; margin-top: 5px; min-height: 30px; }
         .correct-ans { font-size: 16px; color: var(--error-color); font-weight: bold; display: none; }
@@ -129,8 +138,6 @@
             display: none;
             border-left: 6px solid var(--primary-color);
         }
-
-        @media print { .controls { display: none; } }
     </style>
 </head>
 <body>
@@ -185,7 +192,7 @@ function init() {
 function createWordBox(text, id) {
     const box = document.createElement('div');
     box.className = 'word-box';
-    const width = Math.max(text.length * 40, 40);
+    const width = Math.max(text.length * 40, 60);
 
     box.innerHTML = `
         <div class="toolbar">
@@ -200,28 +207,17 @@ function createWordBox(text, id) {
         <div class="correct-ans" id="ans-${id}">${text}</div>
     `;
 
-    initCanvas(id, width);
+    initCanvas(id);
     return box;
 }
 
-function initCanvas(id, width) {
+function initCanvas(id) {
     setTimeout(() => {
         const canvas = document.getElementById(`canvas-${id}`);
         const ctx = canvas.getContext('2d', { desynchronized: true });
         let drawing = false;
-        let tool = 'draw';
 
-        canvases[id] = { canvas, ctx, tool };
-
-        // 繪製背景線
-        ctx.strokeStyle = '#ff9999';
-        ctx.lineWidth = 1;
-        for(let i=1; i<=4; i++) {
-            ctx.beginPath();
-            ctx.moveTo(0, i * 40);
-            ctx.lineTo(width, i * 40);
-            ctx.stroke();
-        }
+        canvases[id] = { canvas, ctx, tool: 'draw' };
 
         const getPos = (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -279,12 +275,10 @@ function setTool(id, tool) {
 
 function speak(text) {
     let utterance = text;
-    // 英式標點符號發音
     if (text === '.') utterance = 'Full stop';
     if (text === ',') utterance = 'Comma';
-    
     const msg = new SpeechSynthesisUtterance(utterance);
-    msg.lang = 'en-GB'; // 使用英式英語
+    msg.lang = 'en-GB';
     msg.rate = 0.8;
     window.speechSynthesis.speak(msg);
 }
@@ -295,12 +289,11 @@ function autoGrade() {
     let totalCount = allBoxes.length;
 
     allBoxes.forEach(box => {
-        const id = box.querySelector('canvas').id.replace('canvas-', '');
+        const canvas = box.querySelector('canvas');
+        const id = canvas.id.replace('canvas-', '');
         const mark = document.getElementById(`mark-${id}`);
         const ans = document.getElementById(`ans-${id}`);
-        const canvas = canvases[id].canvas;
 
-        // 模擬 AI 辨識：如果畫布有筆跡則隨機判定(實際應用需對接OCR)
         const isBlank = isCanvasBlank(canvas);
         const isCorrect = !isBlank && Math.random() > 0.15;
 
@@ -319,9 +312,8 @@ function autoGrade() {
 
     const panel = document.getElementById('feedback-panel');
     panel.style.display = 'block';
-    document.getElementById('score-text').innerHTML = `答對畫布：${correctCount} / ${totalCount} <br> <strong>最終得分：${score} / 60</strong>`;
-    document.getElementById('advice-text').innerText = score === 60 ? "Perfect! Excellent work." : "請根據紅字更正錯誤，注意大小寫。";
-    
+    document.getElementById('score-text').innerHTML = `答對：${correctCount} / ${totalCount} <br> <strong>最終得分：${score} / 60</strong>`;
+    document.getElementById('advice-text').innerText = score === 60 ? "Perfect! Excellent work." : "請根據紅字更正錯誤。";
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
@@ -330,8 +322,8 @@ function isCanvasBlank(canvas) {
     const pixelBuffer = new Uint32Array(
         context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
     );
-    // 考慮到背景線，需判斷是否有深色像素（非透明、非背景色）
-    return !pixelBuffer.some(color => color !== 0 && color !== 4294572543); 
+    // 判斷是否有任何非透明像素即可，因為背景線現在是在 CSS 層，getImageData 抓不到它
+    return !pixelBuffer.some(color => color !== 0); 
 }
 
 function resetAll() {
@@ -341,6 +333,7 @@ function resetAll() {
 function takeScreenshot() {
     const btn = document.querySelector('.btn-shot');
     btn.innerText = "截圖生成中...";
+    // html2canvas 會嘗試渲染 CSS 背景，確保四線譜被包含在內
     html2canvas(document.getElementById('capture-area'), {
         backgroundColor: "#f0f4f8",
         scale: 2
@@ -350,7 +343,6 @@ function takeScreenshot() {
         link.href = canvas.toDataURL("image/png");
         link.click();
         btn.innerText = "成績表截圖下載到相片簿再上傳padlet";
-        alert("截圖已完成下載！");
     });
 }
 
