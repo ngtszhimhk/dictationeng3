@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小五英文默書優化版</title>
+    <title>小五英文默書專業版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
@@ -13,31 +13,31 @@
             --line-color: #ff9999;
             --bg-canvas: #fffef0;
         }
-        body { font-family: Arial, sans-serif; background: #f4f7f9; padding: 20px; touch-action: manipulation; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 20px; touch-action: manipulation; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: var(--primary-color); }
-        .section-header { background: #e3f2fd; padding: 10px; margin: 25px 0 15px; border-left: 5px solid var(--primary-color); font-weight: bold; }
-        .passage-section { display: flex; flex-wrap: wrap; gap: 40px 12px; margin-bottom: 20px; }
+        .section-header { background: #e1f5fe; padding: 10px 20px; border-left: 5px solid var(--primary-color); margin: 30px 0 15px; font-weight: bold; }
+        .passage-section { display: flex; flex-wrap: wrap; gap: 45px 12px; margin-bottom: 30px; }
         .word-box { display: flex; flex-direction: column; align-items: center; }
-        .toolbar { display: flex; gap: 3px; margin-bottom: 5px; }
-        .btn-mini { padding: 4px 6px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; }
-        .btn-mini.active { background: var(--primary-color); color: white; }
-        .canvas-container { position: relative; background: var(--bg-canvas); border: 1px solid #ccc; border-radius: 4px; }
-        .lines { position: absolute; top:0; left:0; pointer-events: none; width: 100%; height: 100%; }
-        .result-mark { font-size: 22px; height: 30px; margin-top: 5px; }
-        .correct-ans { font-size: 14px; color: var(--error-color); font-weight: bold; display: none; }
-        .controls { position: sticky; bottom: 20px; display: flex; justify-content: center; gap: 15px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; }
-        .main-btn { padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; color: white; font-weight: bold; font-size: 16px; }
-        #feedback-panel { margin-top: 20px; padding: 20px; background: #fafafa; border-radius: 8px; display: none; border-left: 5px solid var(--primary-color); }
+        .toolbar { display: flex; gap: 4px; margin-bottom: 8px; }
+        .btn-mini { padding: 5px 8px; font-size: 14px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 5px; }
+        .btn-mini.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .canvas-container { position: relative; background: var(--bg-canvas); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+        .lines-layer { position: absolute; top: 0; left: 0; pointer-events: none; }
+        .result-mark { font-size: 24px; margin-top: 5px; min-height: 30px; font-weight: bold; }
+        .correct-ans { font-size: 16px; color: var(--error-color); font-weight: bold; display: none; margin-top: 2px; }
+        .controls { position: sticky; bottom: 20px; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 50px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); display: flex; justify-content: center; gap: 15px; z-index: 1000; margin-top: 40px; }
+        .main-btn { padding: 12px 25px; border: none; border-radius: 25px; cursor: pointer; color: white; font-weight: bold; font-size: 16px; }
+        #feedback-panel { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; display: none; border-left: 6px solid var(--primary-color); }
     </style>
 </head>
 <body>
 
 <div class="container" id="capture-area">
     <h1>英文默書練習 (Part C: 60%)</h1>
-    <div id="content"></div>
+    <div id="main-content"></div>
     <div id="feedback-panel">
-        <p id="score-text"></p>
+        <h3 id="score-display"></h3>
         <p id="advice-text"></p>
     </div>
 </div>
@@ -55,10 +55,10 @@ const passage = [
     "On Chinese New Year's Eve , I visited the flower market . It was a mandarin tree . Look at the photo . The mandarin tree isn't real , but I love it . It looks very cute ."
 ];
 
-const ctxs = {};
+const state = {};
 
 function init() {
-    const root = document.getElementById('content');
+    const root = document.getElementById('main-content');
     passage.forEach((text, pIdx) => {
         const header = document.createElement('div');
         header.className = 'section-header';
@@ -71,115 +71,132 @@ function init() {
         
         tokens.forEach((t, tIdx) => {
             const id = `p${pIdx}t${tIdx}`;
-            const box = createBox(t, id);
-            sec.appendChild(box);
+            sec.appendChild(createWordBox(t, id));
         });
         root.appendChild(sec);
     });
 }
 
-function createBox(text, id) {
-    const wBox = document.createElement('div');
-    wBox.className = 'word-box';
-    const width = Math.max(text.length * 40, 40);
+function createWordBox(text, id) {
+    const box = document.createElement('div');
+    box.className = 'word-box';
+    const width = Math.max(text.length * 40, 45);
 
-    wBox.innerHTML = `
+    box.innerHTML = `
         <div class="toolbar">
             <button class="btn-mini" onclick="speak('${text}')">🔊</button>
             <button class="btn-mini active" id="draw-${id}" onclick="setTool('${id}','draw')">✏️</button>
             <button class="btn-mini" id="erase-${id}" onclick="setTool('${id}','erase')">🧽</button>
         </div>
         <div class="canvas-container" style="width:${width}px; height:160px;">
-            <canvas class="lines" width="${width}" height="160"></canvas>
+            <canvas class="lines-layer" width="${width}" height="160"></canvas>
             <canvas id="can-${id}" width="${width}" height="160" style="position:relative; z-index:2;"></canvas>
         </div>
         <div class="result-mark" id="mark-${id}"></div>
         <div class="correct-ans" id="ans-${id}">${text}</div>
     `;
     setupCanvas(id, width);
-    return wBox;
+    return box;
 }
 
 function setupCanvas(id, width) {
     setTimeout(() => {
         const can = document.getElementById(`can-${id}`);
-        const ctx = can.getContext('2d', {willReadFrequently: true});
-        const lineCan = can.previousElementSibling;
-        const lCtx = lineCan.getContext('2d');
+        const ctx = can.getContext('2d', { willReadFrequently: true });
+        const lCtx = can.previousElementSibling.getContext('2d');
         
-        // 畫四線譜
+        // 繪製背景四線譜
         lCtx.strokeStyle = '#ff9999';
+        lCtx.lineWidth = 1;
         for(let i=1; i<=4; i++) {
             lCtx.beginPath(); lCtx.moveTo(0, i*40); lCtx.lineTo(width, i*40); lCtx.stroke();
         }
 
-        ctxs[id] = { ctx, tool: 'draw' };
-        let drawing = false;
+        state[id] = { ctx, tool: 'draw', drawing: false };
 
-        const getXY = (e) => {
-            const r = can.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return [clientX - r.left, clientY - r.top];
+        const getPos = (e) => {
+            const rect = can.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return [cx - rect.left, cy - rect.top];
         };
 
-        const start = (e) => { drawing = true; ctx.beginPath(); const [x,y] = getXY(e); ctx.moveTo(x,y); if(e.cancelable) e.preventDefault(); };
-        const move = (e) => {
-            if(!drawing) return;
-            const [x,y] = getXY(e);
-            ctx.globalCompositeOperation = ctxs[id].tool === 'draw' ? 'source-over' : 'destination-out';
-            ctx.lineWidth = ctxs[id].tool === 'draw' ? 3 : 25;
-            ctx.lineCap = 'round'; ctx.strokeStyle = '#2c3e50';
-            ctx.lineTo(x,y); ctx.stroke();
+        const start = (e) => {
+            state[id].drawing = true;
+            ctx.beginPath();
+            const [x, y] = getPos(e);
+            ctx.moveTo(x, y);
             if(e.cancelable) e.preventDefault();
         };
-        const stop = () => drawing = false;
 
-        can.addEventListener('mousedown', start); can.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
-        can.addEventListener('touchstart', start, {passive:false}); can.addEventListener('touchmove', move, {passive:false}); can.addEventListener('touchend', stop);
+        const move = (e) => {
+            if(!state[id].drawing) return;
+            const [x, y] = getPos(e);
+            ctx.globalCompositeOperation = state[id].tool === 'draw' ? 'source-over' : 'destination-out';
+            ctx.lineWidth = state[id].tool === 'draw' ? 3 : 25;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            if(e.cancelable) e.preventDefault();
+        };
+
+        can.addEventListener('mousedown', start);
+        can.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', () => state[id].drawing = false);
+        can.addEventListener('touchstart', start, {passive: false});
+        can.addEventListener('touchmove', move, {passive: false});
+        can.addEventListener('touchend', () => state[id].drawing = false);
     }, 0);
 }
 
 function setTool(id, tool) {
-    ctxs[id].tool = tool;
-    document.getElementById(`draw-${id}`).classList.toggle('active', tool==='draw');
-    document.getElementById(`erase-${id}`).classList.toggle('active', tool==='erase');
+    state[id].tool = tool;
+    document.getElementById(`draw-${id}`).classList.toggle('active', tool === 'draw');
+    document.getElementById(`erase-${id}`).classList.toggle('active', tool === 'erase');
 }
 
+// --- 發音邏輯優化 ---
 function speak(text) {
     let t = text;
-    // 發音修正
+    // 邏輯處理：針對特定單詞進行發音修正
     if (t === "Year's") t = "Year apostrophe s";
-    if (t === "isn't") t = "isn't"; // Speech API 通常能識別 isn't，若需音標則手動處理
+    if (t === "isn't") t = "isnt"; // 去撇號觸發連讀
     if (t === "I") t = "i"; 
     if (t === ".") t = "Full stop";
     if (t === ",") t = "Comma";
 
     const msg = new SpeechSynthesisUtterance(t);
-    msg.lang = 'en-GB'; 
-    if (text === "isn't") msg.text = "isnt"; // 移除撇號有助於部分引擎發出 /ˈɪzənt/
+    msg.lang = 'en-GB'; // 強制英式英文
+    msg.rate = 0.8;    // 稍微減速確保清晰度
     window.speechSynthesis.speak(msg);
 }
 
+// --- 像素比對算法優化 ---
 async function autoGrade() {
-    let correct = 0;
     const boxes = document.querySelectorAll('.word-box');
+    let correctCount = 0;
     
+    document.querySelector('.btn-check').innerText = "AI 分析筆跡中...";
+
     for(const box of boxes) {
         const id = box.querySelector('canvas[id]').id.replace('can-','');
         const target = document.getElementById(`ans-${id}`).innerText;
         const canvas = document.getElementById(`can-${id}`);
         
-        // 像素比對邏輯 (提升準確度)
-        const score = await compare(canvas, target);
-        const isOk = score > 0.35; // 相似度閾值
+        // 核心：像素重疊比對
+        const score = await calculateSimilarity(canvas, target);
+        
+        // 閾值判定：相似度高於 0.35 視為正確 (容許手寫誤差)
+        const isCorrect = score > 0.35;
         
         const mark = document.getElementById(`mark-${id}`);
         const ans = document.getElementById(`ans-${id}`);
-        if(isOk) {
+        
+        if(isCorrect) {
             mark.innerHTML = '<span style="color:var(--success-color)">✓</span>';
             ans.style.display = 'none';
-            correct++;
+            correctCount++;
         } else {
             mark.innerHTML = '<span style="color:var(--error-color)">✗</span>';
             ans.style.display = 'block';
@@ -187,41 +204,55 @@ async function autoGrade() {
     }
 
     const total = boxes.length;
-    let finalScore = 60 - ((total - correct) * 3);
+    let finalScore = 60 - ((total - correctCount) * 3);
     if(finalScore < 0) finalScore = 0;
 
     document.getElementById('feedback-panel').style.display = 'block';
-    document.getElementById('score-text').innerHTML = `得分：<b>${finalScore} / 60</b> (答對 ${correct}/${total})`;
-    window.scrollTo(0, document.body.scrollHeight);
+    document.getElementById('score-display').innerHTML = `得分：${finalScore} / 60 <br> <small>(答對 ${correctCount} / ${total} 個畫布)</small>`;
+    document.getElementById('advice-text').innerText = finalScore === 60 ? "太棒了！完全正確！" : "請對照紅字修改錯誤，特別注意大小寫與標點。";
+    document.querySelector('.btn-check').innerText = "AI 自動批改";
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-function compare(userCan, text) {
-    return new Promise(res => {
-        const temp = document.createElement('canvas');
-        temp.width = userCan.width; temp.height = userCan.height;
-        const tCtx = temp.getContext('2d');
-        tCtx.font = "bold 70px Arial"; tCtx.textAlign = "center";
-        tCtx.fillText(text, temp.width/2, 100);
+function calculateSimilarity(userCanvas, text) {
+    return new Promise(resolve => {
+        const w = userCanvas.width;
+        const h = userCanvas.height;
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w; tempCanvas.height = h;
+        const tCtx = tempCanvas.getContext('2d');
 
-        const uData = userCan.getContext('2d').getImageData(0,0,temp.width,temp.height).data;
-        const tData = tCtx.getImageData(0,0,temp.width,temp.height).data;
-        
-        let hits = 0, total = 0;
-        for(let i=3; i<tData.length; i+=4) {
-            if(tData[i] > 50) { total++; if(uData[i] > 50) hits++; }
+        // 在虛擬畫布寫下標準答案
+        tCtx.font = "bold 70px Arial";
+        tCtx.textAlign = "center";
+        tCtx.textBaseline = "middle";
+        tCtx.fillText(text, w/2, 90);
+
+        const userData = userCanvas.getContext('2d').getImageData(0,0,w,h).data;
+        const tempData = tCtx.getImageData(0,0,w,h).data;
+
+        let matches = 0, totalTemplate = 0;
+        for(let i=3; i<tempData.length; i+=4) {
+            if(tempData[i] > 50) { // 模板有字的地方
+                totalTemplate++;
+                if(userData[i] > 50) matches++; // 學生也有畫的地方
+            }
         }
-        res(total === 0 ? 0 : hits / total);
+        resolve(totalTemplate === 0 ? 0 : matches / totalTemplate);
     });
 }
 
-function resetAll() { if(confirm("確定清除嗎？")) location.reload(); }
+function resetAll() {
+    if(confirm("確定要清除所有內容重新開始嗎？")) location.reload();
+}
 
 function takeScreenshot() {
-    html2canvas(document.getElementById('capture-area')).then(can => {
+    html2canvas(document.getElementById('capture-area'), { scale: 2 }).then(canvas => {
         const link = document.createElement('a');
-        link.download = '默書成績.png';
-        link.href = can.toDataURL();
+        link.download = `默書成績_${new Date().toLocaleTimeString()}.png`;
+        link.href = canvas.toDataURL();
         link.click();
+        alert("成績表已存至下載資料夾，請上傳至 Padlet！");
     });
 }
 
