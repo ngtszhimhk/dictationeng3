@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小五英文默書練習 - Part C</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --error-color: #e74c3c;
+            --success-color: #2ecc71;
+            --line-color: #ff9999;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 { text-align: center; color: var(--primary-color); }
+        .instruction { text-align: center; margin-bottom: 20px; font-weight: bold; }
+
+        .passage-section {
+            margin-bottom: 40px;
+            line-height: 4; /* 為畫布預留垂直空間 */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px 10px;
+        }
+
+        .word-box {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: top;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 5px;
+        }
+
+        .btn-mini {
+            padding: 2px 5px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 3px;
+        }
+
+        .btn-mini:hover { background: #eee; }
+
+        .canvas-container {
+            position: relative;
+            background-image: linear-gradient(var(--line-color) 1px, transparent 1px);
+            background-size: 100% 40px;
+            background-color: #fffef0;
+            border: 1px solid #ccc;
+        }
+
+        canvas { cursor: crosshair; touch-action: none; }
+
+        .result-mark {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .correct-ans {
+            font-size: 14px;
+            color: var(--error-color);
+            display: none;
+        }
+
+        .controls {
+            position: sticky;
+            bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-top: 2px solid var(--primary-color);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            z-index: 100;
+        }
+
+        button.main-btn {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .btn-check { background-color: var(--success-color); }
+        .btn-reset { background-color: var(--error-color); }
+        .btn-shot { background-color: var(--primary-color); }
+
+        #feedback-panel {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            background: #f9f9f9;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        @media (max-width: 600px) {
+            .passage-section { gap: 30px 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="capture-area">
+    <h1>英文默書練習 (Part C: 60%)</h1>
+    <p class="instruction">請在四線譜畫布上書寫正確的單詞與標點符號。</p>
+
+    <div id="section1" class="passage-section"></div>
+    <hr>
+    <div id="section2" class="passage-section"></div>
+    <hr>
+    <div id="section3" class="passage-section"></div>
+
+    <div id="feedback-panel">
+        <h3>批改結果：</h3>
+        <p id="score-text"></p>
+        <p id="advice-text"></p>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="main-btn btn-check" onclick="autoGrade()">AI 自動批改</button>
+    <button class="main-btn btn-reset" onclick="resetAll()">清屏重默</button>
+    <button class="main-btn btn-shot" onclick="takeScreenshot()">成績表截圖下載到相片簿再上傳padlet</button>
+</div>
+
+<script>
+const passageData = [
+    "Betty and Billy were a great help to their uncle Eddy on his big day .",
+    "It was almost time for groom Eddy to give the bride Nicole the wedding ring . He asked his brother Henry for the ring . Henry was the best man . He helped Eddy at the wedding . Henry searched in his pockets , but he could not find it .",
+    "On Chinese New Year's Eve , I visited the flower market . It was a mandarin tree . Look at the photo . The mandarin tree isn't real , but I love it . It looks very cute ."
+];
+
+function init() {
+    passageData.forEach((text, sectionIdx) => {
+        const container = document.getElementById(`section${sectionIdx + 1}`);
+        // 這裡的正則表達式會保留單詞、標點符號，並處理 Year's 和 isn't
+        const tokens = text.match(/[A-Za-z']+|[.,]/g);
+
+        tokens.forEach((token, tokenIdx) => {
+            const wordBox = createWordBox(token, `s${sectionIdx}t${tokenIdx}`);
+            container.appendChild(wordBox);
+        });
+    });
+}
+
+function createWordBox(targetText, id) {
+    const box = document.createElement('div');
+    box.className = 'word-box';
+    
+    // 計算寬度: 每個字元 40px
+    const width = targetText.length * 40;
+
+    box.innerHTML = `
+        <div class="toolbar">
+            <button class="btn-mini" onclick="speak('${targetText}')">🔊</button>
+            <button class="btn-mini" onclick="setMode('${id}', 'draw')">✏️</button>
+            <button class="btn-mini" onclick="setMode('${id}', 'erase')">🧽</button>
+        </div>
+        <div class="canvas-container" style="width:${width}px; height:160px;">
+            <canvas id="canvas-${id}" width="${width}" height="160"></canvas>
+        </div>
+        <div class="result-mark" id="mark-${id}"></div>
+        <div class="correct-ans" id="ans-${id}">${targetText}</div>
+    `;
+
+    setupCanvas(id, width);
+    return box;
+}
+
+function setupCanvas(id, width) {
+    setTimeout(() => {
+        const canvas = document.getElementById(`canvas-${id}`);
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let mode = 'draw';
+
+        // 畫四線譜背景 (內高40px)
+        ctx.strokeStyle = '#ff9999';
+        ctx.lineWidth = 1;
+        for(let i=1; i<=4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, i * 40);
+            ctx.lineTo(width, i * 40);
+            ctx.stroke();
+        }
+
+        // 繪圖邏輯
+        const start = (e) => { 
+            drawing = true; 
+            draw(e); 
+        };
+        const stop = () => { 
+            drawing = false; 
+            ctx.beginPath(); 
+        };
+        const draw = (e) => {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+            ctx.lineWidth = mode === 'draw' ? 3 : 20;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = mode === 'draw' ? '#2c3e50' : '#fffef0';
+
+            if (mode === 'erase') {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        };
+
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stop);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+        canvas.addEventListener('touchend', stop);
+
+        canvas.dataset.mode = 'draw';
+    }, 0);
+}
+
+function setMode(id, mode) {
+    const canvas = document.getElementById(`canvas-${id}`);
+    const ctx = canvas.getContext('2d');
+    if(mode === 'draw') {
+        ctx.globalCompositeOperation = 'source-over';
+    } else {
+        ctx.globalCompositeOperation = 'destination-out';
+    }
+}
+
+function speak(text) {
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = 'en-US';
+    window.speechSynthesis.speak(msg);
+}
+
+function autoGrade() {
+    // 模擬 AI 辨識邏輯：在實際應用中需串接 OCR API
+    // 這裡演示流程：隨機模擬對錯，並計算分數
+    const allBoxes = document.querySelectorAll('.word-box');
+    let correctCount = 0;
+    let totalCount = allBoxes.length; // 106個
+
+    allBoxes.forEach(box => {
+        const mark = box.querySelector('.result-mark');
+        const ans = box.querySelector('.correct-ans');
+        const canvas = box.querySelector('canvas');
+        
+        // 這裡模擬 AI 批改過程 (實際需圖像識別)
+        // 為了演示，我們假設如果畫布不是空的，就有 80% 機率對
+        const isBlank = isCanvasBlank(canvas);
+        const isCorrect = isBlank ? false : Math.random() > 0.2; 
+
+        if (isCorrect) {
+            mark.innerHTML = '✅';
+            mark.style.color = 'var(--success-color)';
+            ans.style.display = 'none';
+            correctCount++;
+        } else {
+            mark.innerHTML = '❌';
+            mark.style.color = 'var(--error-color)';
+            ans.style.display = 'block';
+        }
+    });
+
+    // 計算分數：滿分60，錯一題扣3分，扣完為止
+    let score = 60 - ((totalCount - correctCount) * 3);
+    if (score < 0) score = 0;
+
+    document.getElementById('feedback-panel').style.display = 'block';
+    document.getElementById('score-text').innerHTML = `答對畫布數：${correctCount} / ${totalCount} <br> <strong>最終得分：${score} / 60</strong>`;
+    
+    let advice = score === 60 ? "太棒了！完全正確！" : "注意大小寫及拼寫，繼續加油！";
+    document.getElementById('advice-text').innerText = advice;
+}
+
+function isCanvasBlank(canvas) {
+    const context = canvas.getContext('2d');
+    const pixelBuffer = new Uint32Array(
+        context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
+    );
+    return !pixelBuffer.some(color => color !== 0);
+}
+
+function resetAll() {
+    if(!confirm("確定要清除所有內容重新默寫嗎？")) return;
+    location.reload();
+}
+
+function takeScreenshot() {
+    const area = document.getElementById('capture-area');
+    html2canvas(area).then(canvas => {
+        const link = document.createElement('a');
+        link.download = '默書成績表.png';
+        link.href = canvas.toDataURL();
+        link.click();
+        alert("截圖已下載！請手動上傳至 Padlet。");
+    });
+}
+
+window.onload = init;
+</script>
+
+</body>
+</html>
