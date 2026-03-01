@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小五英文默書練習 - Part C</title>
+    <title>小五英文默書優化版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
@@ -11,351 +11,221 @@
             --error-color: #e74c3c;
             --success-color: #2ecc71;
             --line-color: #ff9999;
-            --text-color: #2c3e50;
             --bg-canvas: #fffef0;
         }
-
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #f0f4f8;
-            margin: 0;
-            padding: 20px;
-            color: var(--text-color);
-            touch-action: manipulation;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
+        body { font-family: Arial, sans-serif; background: #f4f7f9; padding: 20px; touch-action: manipulation; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; }
         h1 { text-align: center; color: var(--primary-color); }
-        h2.section-title { 
-            background: #e1f5fe; 
-            padding: 10px 20px; 
-            border-left: 5px solid var(--primary-color);
-            margin: 30px 0 20px 0;
-            font-size: 1.2rem;
-        }
-
-        .passage-section {
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 45px 12px;
-            align-items: flex-start;
-        }
-
-        .word-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .toolbar {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 8px;
-        }
-
-        .btn-mini {
-            padding: 5px 8px;
-            font-size: 14px;
-            cursor: pointer;
-            border: 1px solid #ddd;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .btn-mini.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .canvas-container {
-            position: relative;
-            background-image: linear-gradient(var(--line-color) 1px, transparent 1px);
-            background-size: 100% 40px;
-            background-color: var(--bg-canvas);
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        canvas { cursor: crosshair; }
-
-        .result-mark { font-size: 24px; margin-top: 5px; min-height: 30px; }
-        .correct-ans { font-size: 16px; color: var(--error-color); font-weight: bold; display: none; }
-
-        .controls {
-            position: sticky;
-            bottom: 20px;
-            background: rgba(255,255,255,0.95);
-            padding: 15px;
-            border-radius: 50px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 40px;
-            z-index: 1000;
-        }
-
-        .main-btn {
-            padding: 12px 24px;
-            font-size: 16px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            color: white;
-            font-weight: bold;
-        }
-
-        .btn-check { background: var(--success-color); }
-        .btn-reset { background: var(--error-color); }
-        .btn-shot { background: var(--primary-color); }
-
-        #feedback-panel {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            display: none;
-            border-left: 6px solid var(--primary-color);
-        }
-
-        @media print { .controls { display: none; } }
+        .section-header { background: #e3f2fd; padding: 10px; margin: 25px 0 15px; border-left: 5px solid var(--primary-color); font-weight: bold; }
+        .passage-section { display: flex; flex-wrap: wrap; gap: 40px 12px; margin-bottom: 20px; }
+        .word-box { display: flex; flex-direction: column; align-items: center; }
+        .toolbar { display: flex; gap: 3px; margin-bottom: 5px; }
+        .btn-mini { padding: 4px 6px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; }
+        .btn-mini.active { background: var(--primary-color); color: white; }
+        .canvas-container { position: relative; background: var(--bg-canvas); border: 1px solid #ccc; border-radius: 4px; }
+        .lines { position: absolute; top:0; left:0; pointer-events: none; width: 100%; height: 100%; }
+        .result-mark { font-size: 22px; height: 30px; margin-top: 5px; }
+        .correct-ans { font-size: 14px; color: var(--error-color); font-weight: bold; display: none; }
+        .controls { position: sticky; bottom: 20px; display: flex; justify-content: center; gap: 15px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; }
+        .main-btn { padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; color: white; font-weight: bold; font-size: 16px; }
+        #feedback-panel { margin-top: 20px; padding: 20px; background: #fafafa; border-radius: 8px; display: none; border-left: 5px solid var(--primary-color); }
     </style>
 </head>
 <body>
 
 <div class="container" id="capture-area">
     <h1>英文默書練習 (Part C: 60%)</h1>
-    
-    <h2 class="section-title">第 1 段</h2>
-    <div id="section1" class="passage-section"></div>
-    
-    <h2 class="section-title">第 2 段</h2>
-    <div id="section2" class="passage-section"></div>
-    
-    <h2 class="section-title">第 3 段</h2>
-    <div id="section3" class="passage-section"></div>
-
+    <div id="content"></div>
     <div id="feedback-panel">
-        <h3>批改結果：</h3>
-        <p id="score-text" style="font-size: 1.2rem;"></p>
+        <p id="score-text"></p>
         <p id="advice-text"></p>
     </div>
 </div>
 
 <div class="controls">
-    <button class="main-btn btn-check" onclick="autoGrade()">AI 自動批改</button>
-    <button class="main-btn btn-reset" onclick="resetAll()">清屏重默</button>
-    <button class="main-btn btn-shot" onclick="takeScreenshot()">成績表截圖下載到相片簿再上傳padlet</button>
+    <button class="main-btn" style="background: var(--success-color)" onclick="autoGrade()">AI 自動批改</button>
+    <button class="main-btn" style="background: var(--error-color)" onclick="resetAll()">清屏重默</button>
+    <button class="main-btn" style="background: var(--primary-color)" onclick="takeScreenshot()">成績表截圖下載到相片簿再上傳padlet</button>
 </div>
 
 <script>
-const passageData = [
+const passage = [
     "Betty and Billy were a great help to their uncle Eddy on his big day .",
     "It was almost time for groom Eddy to give the bride Nicole the wedding ring . He asked his brother Henry for the ring . Henry was the best man . He helped Eddy at the wedding . Henry searched in his pockets , but he could not find it .",
     "On Chinese New Year's Eve , I visited the flower market . It was a mandarin tree . Look at the photo . The mandarin tree isn't real , but I love it . It looks very cute ."
 ];
 
-const canvases = {};
+const ctxs = {};
 
 function init() {
-    passageData.forEach((text, sIdx) => {
-        const container = document.getElementById(`section${sIdx + 1}`);
-        const tokens = text.match(/[A-Za-z']+|[.,]/g);
+    const root = document.getElementById('content');
+    passage.forEach((text, pIdx) => {
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        header.innerText = `第 ${pIdx + 1} 段`;
+        root.appendChild(header);
 
-        tokens.forEach((token, tIdx) => {
-            const id = `s${sIdx}t${tIdx}`;
-            const wordBox = createWordBox(token, id);
-            container.appendChild(wordBox);
+        const sec = document.createElement('div');
+        sec.className = 'passage-section';
+        const tokens = text.match(/[A-Za-z']+|[.,]/g);
+        
+        tokens.forEach((t, tIdx) => {
+            const id = `p${pIdx}t${tIdx}`;
+            const box = createBox(t, id);
+            sec.appendChild(box);
         });
+        root.appendChild(sec);
     });
 }
 
-function createWordBox(text, id) {
-    const box = document.createElement('div');
-    box.className = 'word-box';
+function createBox(text, id) {
+    const wBox = document.createElement('div');
+    wBox.className = 'word-box';
     const width = Math.max(text.length * 40, 40);
 
-    box.innerHTML = `
+    wBox.innerHTML = `
         <div class="toolbar">
             <button class="btn-mini" onclick="speak('${text}')">🔊</button>
-            <button class="btn-mini active" id="btn-draw-${id}" onclick="setTool('${id}', 'draw')">✏️</button>
-            <button class="btn-mini" id="btn-erase-${id}" onclick="setTool('${id}', 'erase')">🧽</button>
+            <button class="btn-mini active" id="draw-${id}" onclick="setTool('${id}','draw')">✏️</button>
+            <button class="btn-mini" id="erase-${id}" onclick="setTool('${id}','erase')">🧽</button>
         </div>
         <div class="canvas-container" style="width:${width}px; height:160px;">
-            <canvas id="canvas-${id}" width="${width}" height="160"></canvas>
+            <canvas class="lines" width="${width}" height="160"></canvas>
+            <canvas id="can-${id}" width="${width}" height="160" style="position:relative; z-index:2;"></canvas>
         </div>
         <div class="result-mark" id="mark-${id}"></div>
         <div class="correct-ans" id="ans-${id}">${text}</div>
     `;
-
-    initCanvas(id, width);
-    return box;
+    setupCanvas(id, width);
+    return wBox;
 }
 
-function initCanvas(id, width) {
+function setupCanvas(id, width) {
     setTimeout(() => {
-        const canvas = document.getElementById(`canvas-${id}`);
-        const ctx = canvas.getContext('2d', { desynchronized: true });
-        let drawing = false;
-        let tool = 'draw';
-
-        canvases[id] = { canvas, ctx, tool };
-
-        // 繪製背景線
-        ctx.strokeStyle = '#ff9999';
-        ctx.lineWidth = 1;
+        const can = document.getElementById(`can-${id}`);
+        const ctx = can.getContext('2d', {willReadFrequently: true});
+        const lineCan = can.previousElementSibling;
+        const lCtx = lineCan.getContext('2d');
+        
+        // 畫四線譜
+        lCtx.strokeStyle = '#ff9999';
         for(let i=1; i<=4; i++) {
-            ctx.beginPath();
-            ctx.moveTo(0, i * 40);
-            ctx.lineTo(width, i * 40);
-            ctx.stroke();
+            lCtx.beginPath(); lCtx.moveTo(0, i*40); lCtx.lineTo(width, i*40); lCtx.stroke();
         }
 
-        const getPos = (e) => {
-            const rect = canvas.getBoundingClientRect();
+        ctxs[id] = { ctx, tool: 'draw' };
+        let drawing = false;
+
+        const getXY = (e) => {
+            const r = can.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            return [clientX - r.left, clientY - r.top];
         };
 
-        const start = (e) => {
-            drawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            if (e.cancelable) e.preventDefault();
-        };
-
+        const start = (e) => { drawing = true; ctx.beginPath(); const [x,y] = getXY(e); ctx.moveTo(x,y); if(e.cancelable) e.preventDefault(); };
         const move = (e) => {
-            if (!drawing) return;
-            const pos = getPos(e);
-            const currentTool = canvases[id].tool;
-
-            if (currentTool === 'erase') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.lineWidth = 30;
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#2c3e50';
-            }
-
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-            if (e.cancelable) e.preventDefault();
+            if(!drawing) return;
+            const [x,y] = getXY(e);
+            ctx.globalCompositeOperation = ctxs[id].tool === 'draw' ? 'source-over' : 'destination-out';
+            ctx.lineWidth = ctxs[id].tool === 'draw' ? 3 : 25;
+            ctx.lineCap = 'round'; ctx.strokeStyle = '#2c3e50';
+            ctx.lineTo(x,y); ctx.stroke();
+            if(e.cancelable) e.preventDefault();
         };
+        const stop = () => drawing = false;
 
-        const stop = () => { drawing = false; };
-
-        canvas.addEventListener('mousedown', start);
-        canvas.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', stop);
-
-        canvas.addEventListener('touchstart', start, { passive: false });
-        canvas.addEventListener('touchmove', move, { passive: false });
-        canvas.addEventListener('touchend', stop);
+        can.addEventListener('mousedown', start); can.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+        can.addEventListener('touchstart', start, {passive:false}); can.addEventListener('touchmove', move, {passive:false}); can.addEventListener('touchend', stop);
     }, 0);
 }
 
 function setTool(id, tool) {
-    canvases[id].tool = tool;
-    document.getElementById(`btn-draw-${id}`).classList.toggle('active', tool === 'draw');
-    document.getElementById(`btn-erase-${id}`).classList.toggle('active', tool === 'erase');
+    ctxs[id].tool = tool;
+    document.getElementById(`draw-${id}`).classList.toggle('active', tool==='draw');
+    document.getElementById(`erase-${id}`).classList.toggle('active', tool==='erase');
 }
 
 function speak(text) {
-    let utterance = text;
-    // 英式標點符號發音
-    if (text === '.') utterance = 'Full stop';
-    if (text === ',') utterance = 'Comma';
-    
-    const msg = new SpeechSynthesisUtterance(utterance);
-    msg.lang = 'en-GB'; // 使用英式英語
-    msg.rate = 0.8;
+    let t = text;
+    // 發音修正
+    if (t === "Year's") t = "Year apostrophe s";
+    if (t === "isn't") t = "isn't"; // Speech API 通常能識別 isn't，若需音標則手動處理
+    if (t === "I") t = "i"; 
+    if (t === ".") t = "Full stop";
+    if (t === ",") t = "Comma";
+
+    const msg = new SpeechSynthesisUtterance(t);
+    msg.lang = 'en-GB'; 
+    if (text === "isn't") msg.text = "isnt"; // 移除撇號有助於部分引擎發出 /ˈɪzənt/
     window.speechSynthesis.speak(msg);
 }
 
-function autoGrade() {
-    const allBoxes = document.querySelectorAll('.word-box');
-    let correctCount = 0;
-    let totalCount = allBoxes.length;
-
-    allBoxes.forEach(box => {
-        const id = box.querySelector('canvas').id.replace('canvas-', '');
+async function autoGrade() {
+    let correct = 0;
+    const boxes = document.querySelectorAll('.word-box');
+    
+    for(const box of boxes) {
+        const id = box.querySelector('canvas[id]').id.replace('can-','');
+        const target = document.getElementById(`ans-${id}`).innerText;
+        const canvas = document.getElementById(`can-${id}`);
+        
+        // 像素比對邏輯 (提升準確度)
+        const score = await compare(canvas, target);
+        const isOk = score > 0.35; // 相似度閾值
+        
         const mark = document.getElementById(`mark-${id}`);
         const ans = document.getElementById(`ans-${id}`);
-        const canvas = canvases[id].canvas;
-
-        // 模擬 AI 辨識：如果畫布有筆跡則隨機判定(實際應用需對接OCR)
-        const isBlank = isCanvasBlank(canvas);
-        const isCorrect = !isBlank && Math.random() > 0.15;
-
-        if (isCorrect) {
-            mark.innerHTML = '<span style="color:#2ecc71">✓</span>';
+        if(isOk) {
+            mark.innerHTML = '<span style="color:var(--success-color)">✓</span>';
             ans.style.display = 'none';
-            correctCount++;
+            correct++;
         } else {
-            mark.innerHTML = '<span style="color:#e74c3c">✗</span>';
+            mark.innerHTML = '<span style="color:var(--error-color)">✗</span>';
             ans.style.display = 'block';
         }
+    }
+
+    const total = boxes.length;
+    let finalScore = 60 - ((total - correct) * 3);
+    if(finalScore < 0) finalScore = 0;
+
+    document.getElementById('feedback-panel').style.display = 'block';
+    document.getElementById('score-text').innerHTML = `得分：<b>${finalScore} / 60</b> (答對 ${correct}/${total})`;
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function compare(userCan, text) {
+    return new Promise(res => {
+        const temp = document.createElement('canvas');
+        temp.width = userCan.width; temp.height = userCan.height;
+        const tCtx = temp.getContext('2d');
+        tCtx.font = "bold 70px Arial"; tCtx.textAlign = "center";
+        tCtx.fillText(text, temp.width/2, 100);
+
+        const uData = userCan.getContext('2d').getImageData(0,0,temp.width,temp.height).data;
+        const tData = tCtx.getImageData(0,0,temp.width,temp.height).data;
+        
+        let hits = 0, total = 0;
+        for(let i=3; i<tData.length; i+=4) {
+            if(tData[i] > 50) { total++; if(uData[i] > 50) hits++; }
+        }
+        res(total === 0 ? 0 : hits / total);
     });
-
-    let score = 60 - ((totalCount - correctCount) * 3);
-    if (score < 0) score = 0;
-
-    const panel = document.getElementById('feedback-panel');
-    panel.style.display = 'block';
-    document.getElementById('score-text').innerHTML = `答對畫布：${correctCount} / ${totalCount} <br> <strong>最終得分：${score} / 60</strong>`;
-    document.getElementById('advice-text').innerText = score === 60 ? "Perfect! Excellent work." : "請根據紅字更正錯誤，注意大小寫。";
-    
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-function isCanvasBlank(canvas) {
-    const context = canvas.getContext('2d');
-    const pixelBuffer = new Uint32Array(
-        context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
-    );
-    // 考慮到背景線，需判斷是否有深色像素（非透明、非背景色）
-    return !pixelBuffer.some(color => color !== 0 && color !== 4294572543); 
-}
-
-function resetAll() {
-    if(confirm("確定要清屏重默嗎？")) location.reload();
-}
+function resetAll() { if(confirm("確定清除嗎？")) location.reload(); }
 
 function takeScreenshot() {
-    const btn = document.querySelector('.btn-shot');
-    btn.innerText = "截圖生成中...";
-    html2canvas(document.getElementById('capture-area'), {
-        backgroundColor: "#f0f4f8",
-        scale: 2
-    }).then(canvas => {
+    html2canvas(document.getElementById('capture-area')).then(can => {
         const link = document.createElement('a');
-        link.download = `默書成績_${new Date().getTime()}.png`;
-        link.href = canvas.toDataURL("image/png");
+        link.download = '默書成績.png';
+        link.href = can.toDataURL();
         link.click();
-        btn.innerText = "成績表截圖下載到相片簿再上傳padlet";
-        alert("截圖已完成下載！");
     });
 }
 
 window.onload = init;
 </script>
-
 </body>
 </html>
